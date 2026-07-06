@@ -1,0 +1,8 @@
+llama-index-core==0.12.*
+llama-index-vector-stores-chroma==0.4.*
+llama-index-embeddings-huggingface==0.5.*
+llama-index-llms-anthropic==0.6.*
+chromadb==0.6.*
+sentence-transformers==3.*
+anthropic==0.49.*
+python-dotenv==1.*
