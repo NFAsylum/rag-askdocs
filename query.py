@@ -1,6 +1,11 @@
-"""Query the RAG pipeline: retrieve top-k chunks, ask Claude, return sources.
+"""Query the RAG pipeline: retrieve top-k chunks, ask an LLM, return sources.
 
 Reads whichever repo was last indexed by ingest.py (chroma_db/active_collection.txt).
+
+The generation backend is selected with the LLM_BACKEND env var:
+  - "anthropic" (default): Claude via the Anthropic API. Needs ANTHROPIC_API_KEY.
+  - "openai-like": any OpenAI-compatible local server (vLLM, LM Studio, llama.cpp, ...).
+Nothing here needs code edits to switch backends — just environment variables.
 """
 import os
 import sys
@@ -8,20 +13,19 @@ from pathlib import Path
 
 os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
 
-import chromadb
 from dotenv import load_dotenv
-from llama_index.core import Settings, VectorStoreIndex
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.llms.anthropic import Anthropic
-from llama_index.vector_stores.chroma import ChromaVectorStore
 
 load_dotenv()
 
 ROOT = Path(__file__).parent
 CHROMA_DIR = ROOT / "chroma_db"
 ACTIVE_COLLECTION_FILE = CHROMA_DIR / "active_collection.txt"
+EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 TOP_K = 4
-DEFAULT_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+
+DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
+DEFAULT_LOCAL_BASE_URL = "http://localhost:8090/v1"
+DEFAULT_LOCAL_MODEL = "qwen2.5-coder-7b"
 
 
 def active_collection() -> str:
@@ -30,17 +34,57 @@ def active_collection() -> str:
     return ACTIVE_COLLECTION_FILE.read_text().strip()
 
 
-def build_query_engine():
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY not set. Copy .env.example to .env and add your key "
-            "(get credits at console.anthropic.com)."
-        )
-    collection = active_collection()
+def _backend() -> str:
+    return os.getenv("LLM_BACKEND", "anthropic").strip().lower()
 
-    Settings.embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    Settings.llm = Anthropic(model=DEFAULT_MODEL, api_key=api_key)
+
+def build_llm():
+    """Construct the generation LLM from env vars. Imports are lazy so switching
+    backends never requires the other backend's package to be installed."""
+    backend = _backend()
+    if backend == "anthropic":
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "ANTHROPIC_API_KEY not set. Copy .env.example to .env and add your key "
+                "(get credits at console.anthropic.com), or set LLM_BACKEND=openai-like "
+                "to use a local model."
+            )
+        from llama_index.llms.anthropic import Anthropic
+
+        return Anthropic(model=os.getenv("ANTHROPIC_MODEL", DEFAULT_ANTHROPIC_MODEL), api_key=api_key)
+
+    if backend in {"openai-like", "openailike", "local"}:
+        from llama_index.llms.openai_like import OpenAILike
+
+        return OpenAILike(
+            model=os.getenv("OPENAI_LIKE_MODEL", DEFAULT_LOCAL_MODEL),
+            api_base=os.getenv("OPENAI_LIKE_BASE_URL", DEFAULT_LOCAL_BASE_URL),
+            api_key=os.getenv("OPENAI_LIKE_API_KEY", "not-needed"),
+            is_chat_model=True,
+            context_window=int(os.getenv("OPENAI_LIKE_CONTEXT_WINDOW", "32768")),
+        )
+
+    raise RuntimeError(f"Unknown LLM_BACKEND '{backend}' (use 'anthropic' or 'openai-like').")
+
+
+def model_label() -> str:
+    """Human-readable description of the active generation model, for attribution."""
+    if _backend() == "anthropic":
+        return f"{os.getenv('ANTHROPIC_MODEL', DEFAULT_ANTHROPIC_MODEL)} (Anthropic API)"
+    base = os.getenv("OPENAI_LIKE_BASE_URL", DEFAULT_LOCAL_BASE_URL)
+    return f"{os.getenv('OPENAI_LIKE_MODEL', DEFAULT_LOCAL_MODEL)} (OpenAI-compatible @ {base})"
+
+
+def build_query_engine():
+    import chromadb
+    from llama_index.core import Settings, VectorStoreIndex
+    from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+    from llama_index.vector_stores.chroma import ChromaVectorStore
+
+    collection = active_collection()
+    Settings.embed_model = HuggingFaceEmbedding(model_name=EMBED_MODEL)
+    Settings.llm = build_llm()
 
     chroma_client = chromadb.PersistentClient(
         path=str(CHROMA_DIR), settings=chromadb.Settings(anonymized_telemetry=False)
