@@ -1,9 +1,9 @@
-"""Interactive CLI demo for the Babel docs RAG pipeline."""
-from query import build_query_engine
+"""Interactive CLI demo for the repo-rag pipeline."""
+from query import active_collection, build_query_engine
 
 
 def main() -> None:
-    print("Babel Docs RAG — ask a question, or type 'exit' to quit.\n")
+    print(f"repo-rag ({active_collection()}) — ask a question, or type 'exit' to quit.\n")
     engine = build_query_engine()
     while True:
         question = input("> ").strip()

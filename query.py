@@ -1,4 +1,7 @@
-"""Query the Babel docs RAG pipeline: retrieve top-k chunks, ask Claude, return sources."""
+"""Query the RAG pipeline: retrieve top-k chunks, ask Claude, return sources.
+
+Reads whichever repo was last indexed by ingest.py (chroma_db/active_collection.txt).
+"""
 import os
 import sys
 from pathlib import Path
@@ -16,9 +19,15 @@ load_dotenv()
 
 ROOT = Path(__file__).parent
 CHROMA_DIR = ROOT / "chroma_db"
-COLLECTION_NAME = "babel_docs"
+ACTIVE_COLLECTION_FILE = CHROMA_DIR / "active_collection.txt"
 TOP_K = 4
 DEFAULT_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+
+
+def active_collection() -> str:
+    if not ACTIVE_COLLECTION_FILE.exists():
+        raise RuntimeError(f"No index found at {CHROMA_DIR}. Run `python ingest.py` first.")
+    return ACTIVE_COLLECTION_FILE.read_text().strip()
 
 
 def build_query_engine():
@@ -28,8 +37,7 @@ def build_query_engine():
             "ANTHROPIC_API_KEY not set. Copy .env.example to .env and add your key "
             "(get credits at console.anthropic.com)."
         )
-    if not CHROMA_DIR.exists():
-        raise RuntimeError(f"No index found at {CHROMA_DIR}. Run `python ingest.py` first.")
+    collection = active_collection()
 
     Settings.embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
     Settings.llm = Anthropic(model=DEFAULT_MODEL, api_key=api_key)
@@ -37,7 +45,7 @@ def build_query_engine():
     chroma_client = chromadb.PersistentClient(
         path=str(CHROMA_DIR), settings=chromadb.Settings(anonymized_telemetry=False)
     )
-    chroma_collection = chroma_client.get_or_create_collection(COLLECTION_NAME)
+    chroma_collection = chroma_client.get_or_create_collection(collection)
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     index = VectorStoreIndex.from_vector_store(vector_store)
 
