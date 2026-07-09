@@ -1,6 +1,6 @@
-# repo-rag
+# rag-askdocs
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NFAsylum/repo-rag/blob/main/notebooks/rag_demo.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NFAsylum/rag-askdocs/blob/main/notebooks/rag_demo.ipynb)
 
 Retrieval-Augmented Generation over **any GitHub repository**: point it at a repo, it ingests the docs and code into a vector store, then answers natural-language questions grounded in that content, with cited sources.
 
@@ -49,8 +49,8 @@ Any public repo works: `python ingest.py --repo https://github.com/OWNER/NAME.gi
 ## Setup
 
 ```bash
-git clone https://github.com/NFAsylum/repo-rag.git
-cd repo-rag
+git clone https://github.com/NFAsylum/rag-askdocs.git
+cd rag-askdocs
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 

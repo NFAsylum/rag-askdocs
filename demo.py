@@ -1,9 +1,9 @@
-"""Interactive CLI demo for the repo-rag pipeline."""
+"""Interactive CLI demo for the rag-askdocs pipeline."""
 from query import active_collection, build_query_engine
 
 
 def main() -> None:
-    print(f"repo-rag ({active_collection()}) — ask a question, or type 'exit' to quit.\n")
+    print(f"rag-askdocs ({active_collection()}) — ask a question, or type 'exit' to quit.\n")
     engine = build_query_engine()
     while True:
         question = input("> ").strip()
