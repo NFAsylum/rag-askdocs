@@ -27,6 +27,39 @@ DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_LOCAL_BASE_URL = "http://localhost:8090/v1"
 DEFAULT_LOCAL_MODEL = "qwen2.5-coder-7b"
 
+NO_ANSWER = "I don't have enough information in the retrieved context to answer that."
+
+# Grounding templates: force the model to answer strictly from retrieved context and
+# to abstain otherwise. The "even about projects with a similar name" clause targets the
+# main failure mode for small models — overriding the context with parametric priors
+# (e.g. confusing an indexed project with a well-known namesake). Applies to any backend.
+_QA_TEMPLATE = (
+    "You are a documentation assistant answering questions about ONE specific software "
+    "repository, using only the retrieved context below.\n"
+    "Rules:\n"
+    "- Answer strictly from the context. Do not use prior knowledge, even about projects "
+    "with a similar name — the indexed project may differ from any namesake you know.\n"
+    f'- If the context does not contain the answer, reply exactly: "{NO_ANSWER}"\n'
+    "- Be concise and factual.\n"
+    "---------------------\n"
+    "{context_str}\n"
+    "---------------------\n"
+    "Question: {query_str}\n"
+    "Answer: "
+)
+_REFINE_TEMPLATE = (
+    "You are refining an answer with more retrieved context.\n"
+    "Question: {query_str}\n"
+    "Existing answer: {existing_answer}\n"
+    "Additional context:\n"
+    "---------------------\n"
+    "{context_msg}\n"
+    "---------------------\n"
+    "Refine the answer using ONLY the context (no prior knowledge). If the combined context "
+    f'still does not answer the question, return exactly: "{NO_ANSWER}"\n'
+    "Refined answer: "
+)
+
 
 def active_collection() -> str:
     if not ACTIVE_COLLECTION_FILE.exists():
@@ -78,7 +111,7 @@ def model_label() -> str:
 
 def build_query_engine():
     import chromadb
-    from llama_index.core import Settings, VectorStoreIndex
+    from llama_index.core import PromptTemplate, Settings, VectorStoreIndex
     from llama_index.embeddings.huggingface import HuggingFaceEmbedding
     from llama_index.vector_stores.chroma import ChromaVectorStore
 
@@ -93,7 +126,11 @@ def build_query_engine():
     vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
     index = VectorStoreIndex.from_vector_store(vector_store)
 
-    return index.as_query_engine(similarity_top_k=TOP_K)
+    return index.as_query_engine(
+        similarity_top_k=TOP_K,
+        text_qa_template=PromptTemplate(_QA_TEMPLATE),
+        refine_template=PromptTemplate(_REFINE_TEMPLATE),
+    )
 
 
 def query(question: str) -> dict:
