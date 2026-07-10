@@ -101,12 +101,19 @@ def build_llm():
     raise RuntimeError(f"Unknown LLM_BACKEND '{backend}' (use 'anthropic' or 'openai-like').")
 
 
+def model_name() -> str:
+    """Raw model identifier of the active backend (used for run filenames)."""
+    if _backend() == "anthropic":
+        return os.getenv("ANTHROPIC_MODEL", DEFAULT_ANTHROPIC_MODEL)
+    return os.getenv("OPENAI_LIKE_MODEL", DEFAULT_LOCAL_MODEL)
+
+
 def model_label() -> str:
     """Human-readable description of the active generation model, for attribution."""
     if _backend() == "anthropic":
-        return f"{os.getenv('ANTHROPIC_MODEL', DEFAULT_ANTHROPIC_MODEL)} (Anthropic API)"
+        return f"{model_name()} (Anthropic API)"
     base = os.getenv("OPENAI_LIKE_BASE_URL", DEFAULT_LOCAL_BASE_URL)
-    return f"{os.getenv('OPENAI_LIKE_MODEL', DEFAULT_LOCAL_MODEL)} (OpenAI-compatible @ {base})"
+    return f"{model_name()} (OpenAI-compatible @ {base})"
 
 
 def build_query_engine():
