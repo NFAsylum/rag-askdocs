@@ -45,6 +45,7 @@ Any public repo works: `python ingest.py --repo https://github.com/OWNER/NAME.gi
 - **sentence-transformers (`all-MiniLM-L6-v2`)** for embeddings — runs locally and free, so the only paid API call in the whole pipeline is the final generation step.
 - **Anthropic API (Claude Haiku by default, Sonnet via `ANTHROPIC_MODEL` env var)** for generation — used in production at my previous job, so this pipeline reuses that experience end-to-end.
 - **Local model fallback** — set `LLM_BACKEND=openai-like` to point generation at any OpenAI-compatible local server (vLLM, LM Studio, llama.cpp, ...); no code edits. See [Local model](#local-model) below.
+- **Grounding prompt** — the query engine uses a custom prompt that forces answers to come only from retrieved context, abstains when the answer isn't there, and explicitly ignores prior knowledge about similarly-named projects. This matters most for small local models, which otherwise tend to answer from parametric memory instead of the retrieved docs.
 
 ## Setup
 
