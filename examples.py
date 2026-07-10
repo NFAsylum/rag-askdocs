@@ -1,18 +1,21 @@
-"""Run the canonical showcase questions and (re)generate example_queries.md.
+"""Run the canonical showcase questions and record one file per model in example_runs/.
 
-The generated file is a recorded artifact — every answer below is real output from
-the pipeline, not hand-written. Re-run this after changing the corpus or the model:
+The generated file is a recorded artifact — every answer is real pipeline output, not
+hand-written. It is named after the active model and carries the model + date in its header.
+The curated comparison lives in example_queries.md (maintained by hand). Re-run after
+changing the corpus or the model:
 
-    python examples.py                                  # label taken from the active backend
-    python examples.py --model-label "Qwen2.5-Coder-7B (local)"
+    python examples.py                                  # name/label from the active backend
+    python examples.py --model-label "qwen3.6-35b-q4"   # override header + filename
 """
 import argparse
+import re
 from datetime import date
 from pathlib import Path
 
-from query import model_label, query
+from query import model_label, model_name, query
 
-OUTPUT_FILE = Path(__file__).parent / "example_queries.md"
+EXAMPLE_RUNS_DIR = Path(__file__).parent / "example_runs"
 
 QUESTIONS = [
     "What is Babel and what problem does it solve?",
@@ -21,6 +24,11 @@ QUESTIONS = [
     "How do I install and set up Babel?",
     "What is Babel's architecture?",
 ]
+
+
+def slugify(text: str) -> str:
+    """Filesystem-safe slug for a run filename."""
+    return re.sub(r"[^a-z0-9._-]+", "-", text.strip().lower()).strip("-") or "run"
 
 
 def render(label: str) -> str:
@@ -43,17 +51,20 @@ def render(label: str) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Regenerate example_queries.md from the pipeline")
+    parser = argparse.ArgumentParser(description="Record a per-model run into example_runs/")
     parser.add_argument(
         "--model-label",
         default=None,
-        help="Override the model name recorded in the file (default: active backend)",
+        help="Override the model name in the header and filename (default: active backend)",
     )
     args = parser.parse_args()
 
     label = args.model_label or model_label()
-    OUTPUT_FILE.write_text(render(label))
-    print(f"Wrote {OUTPUT_FILE} ({len(QUESTIONS)} questions, model: {label})")
+    slug = slugify(args.model_label or model_name())
+    EXAMPLE_RUNS_DIR.mkdir(exist_ok=True)
+    out_file = EXAMPLE_RUNS_DIR / f"{slug}.md"
+    out_file.write_text(render(label))
+    print(f"Wrote {out_file} ({len(QUESTIONS)} questions, model: {label})")
 
 
 if __name__ == "__main__":
