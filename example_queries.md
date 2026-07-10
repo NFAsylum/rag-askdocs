@@ -1,18 +1,28 @@
-# Example queries
+# Example queries — results overview
 
-Recorded output of `python query.py "<question>"` against the default corpus (Babel's `docs/` + `examples/`). Answers and cited sources below are exactly what the pipeline returned — nothing here is hand-written.
+Five questions run through the pipeline over the default corpus (Babel's `docs/` + `examples/`),
+with two local models. The full recorded outputs (real pipeline output, not hand-written) live in
+[`example_runs/`](./example_runs); this page summarizes how each answer holds up when **verified
+against Babel's own documentation**.
 
-**Pending:** this file needs a real `ANTHROPIC_API_KEY` (or a local LLM fallback) to run the generation step and populate. Retrieval already works with no key — verified that these questions retrieve the right source files:
+| # | Question | `qwen2.5-coder-7b` | `qwen3.6-35b` | Verified against |
+|---|----------|:------------------:|:-------------:|------------------|
+| 1 | What is Babel and what problem does it solve? | abstained | ✅ correct | `faq.md`, `architecture.md` |
+| 2 | Which programming languages does Babel support? | ❌ wrong | ❌ wrong | `faq.md` — see note below |
+| 3 | How do I add support for a new IDE? | ✅ correct | ✅ correct | `adding-new-ide.md` |
+| 4 | How do I install and set up Babel? | abstained | ✅ correct | `setup-ambiente.md` |
+| 5 | What is Babel's architecture? | abstained | ✅ correct | `architecture.md` |
 
-| Question | Top retrieved source |
-| --- | --- |
-| What is Babel? | `troubleshooting.md`, `adding-new-language.md` |
-| How do I add support for a new IDE? | `adding-new-ide.md` |
-| Which languages does Babel translate? | `plano-geral.txt`, `faq.md` |
+**Reading this:** the 35B model answers 4/5 correctly; the 7B model, under the grounding prompt,
+safely abstains rather than hallucinate on questions it can't ground (3/5). Both miss Q2 — and that
+miss is the interesting one.
 
-Planned questions to record (same set as `notebooks/rag_demo.ipynb`):
+**Q2 is a documented failure, not a fluke.** The shipped answer (`faq.md`) is C#, Python, VisuAlg,
+Portugol Studio. Both models answer "C#, Python, JavaScript, Java" because they retrieved Babel's
+internal *planning* docs, which list JavaScript/Java as future roadmap structure — and the pipeline
+can't tell a roadmap from a reference doc. See
+[Limitations](./README.md#limitations--where-this-rag-breaks-and-why) for the full analysis.
 
-1. What is Babel and what problem does it solve?
-2. Which programming languages does Babel support for translation?
-3. How do I add support for a new IDE to Babel?
-4. _(to fill in — pick 2 more that exercise different doc sections, e.g. architecture or setup)_
+Recorded runs:
+- [`example_runs/qwen2.5-coder-7b-instruct.md`](./example_runs/qwen2.5-coder-7b-instruct.md)
+- [`example_runs/qwen3.6-35b-a3b-thinking.md`](./example_runs/qwen3.6-35b-a3b-thinking.md)
