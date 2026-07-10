@@ -6,7 +6,7 @@ The curated comparison lives in example_queries.md (maintained by hand). Re-run 
 changing the corpus or the model:
 
     python examples.py                                  # name/label from the active backend
-    python examples.py --model-label "qwen3.6-35b-a3b-thinking"
+    python examples.py --model-label "qwen3.6-35b-q4"   # override header + filename
 """
 import argparse
 import re

@@ -25,4 +25,4 @@ can't tell a roadmap from a reference doc. See
 
 Recorded runs:
 - [`example_runs/qwen2.5-coder-7b.md`](./example_runs/qwen2.5-coder-7b.md)
-- [`example_runs/qwen3.6-35b-a3b-thinking.md`](./example_runs/qwen3.6-35b-a3b-thinking.md)
+- [`example_runs/qwen3.6-35b.md`](./example_runs/qwen3.6-35b.md)
